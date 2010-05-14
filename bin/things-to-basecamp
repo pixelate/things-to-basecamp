@@ -1,0 +1,56 @@
+#!/usr/bin/env ruby
+
+$: << File.expand_path(File.dirname(__FILE__)) + "/../lib"
+require "optparse"
+require "lib/basecamp"
+#require 'rubygems'
+require 'things'
+
+BASECAMP_URL = "understandinggames.grouphub.com"
+USERNAME = "andreaszecher"
+PASSWORD = "diupdad8"
+SSL = true
+
+options = { :tasks => { :completed => false }, :tag => "Basecamp:Promoter:Backlog" }
+
+things = Things.new()
+tasks = things.focus("today").tasks(options[:tasks])
+tasks += things.focus("next").tasks(options[:tasks])
+tasks += things.focus("inbox").tasks(options[:tasks])
+
+tasks = tasks.select do |task|
+  task.tag? options[:tag]
+end
+
+tasks.map do |task|
+  tags    = "(#{task.tags.join(' ')})" if task.tags?
+  project = "[#{task.parent}]" if task.parent?
+  [task.bullet, task.title, tags, project].compact.join(" ")
+end
+
+session = Basecamp.new(BASECAMP_URL, USERNAME, PASSWORD)
+
+project_id = nil
+
+projects = session.projects.each do |project|
+  if project.name == options[:tag].split(":")[1]
+    project_id = project.id
+  end
+end
+
+if project_id != nil
+  todo_lists = session.lists(project_id)
+  todo_list_id = nil 
+
+  todo_lists = todo_lists.each do |list|
+    if list.name == options[:tag].split(":").last
+      todo_list_id = list.id
+    end
+  end
+
+  if todo_list_id != nil
+    tasks.each do |task|
+      session.create_item(todo_list_id, task.title)
+    end
+  end
+end
