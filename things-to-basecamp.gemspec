@@ -28,7 +28,8 @@ Gem::Specification.new do |s|
      "bin/things-to-basecamp",
      "lib/basecamp.rb",
      "test/helper.rb",
-     "test/test_things-to-basecamp.rb"
+     "test/test_things-to-basecamp.rb",
+     "things-to-basecamp.gemspec"
   ]
   s.homepage = %q{http://github.com/pixelate/things-to-basecamp}
   s.rdoc_options = ["--charset=UTF-8"]
