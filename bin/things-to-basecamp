@@ -3,10 +3,9 @@
 $: << File.expand_path(File.dirname(__FILE__)) + "/../lib"
 
 require "optparse"
-require "basecamp"
-require 'things'
+require "things-to-basecamp"
 
-options = { :tasks => { :completed => false }, :tag => "Basecamp:Promoter:Backlog" }
+options = { :tasks => { :completed => false } }
 
 opts = OptionParser.new do |opts|
   opts.separator ''
@@ -72,48 +71,4 @@ else
   basecamp_password = options[:password]
 end
 
-session = Basecamp.new(basecamp_url, basecamp_username, basecamp_password)
-
-things = Things.new()
-tasks = things.focus("today").tasks(options[:tasks])
-tasks += things.focus("next").tasks(options[:tasks])
-tasks += things.focus("inbox").tasks(options[:tasks])
-
-tasks = tasks.select do |task|
-  tagged = false
-  task.tags.each do |tag|
-    tagged = true if tag.split(":").first == "List"
-  end
-  tagged
-end
-
-tasks.each do |task|
-  # Find project
-  project = nil
-
-  projects = session.projects.each do |p|
-    if task.parent.title == p.name
-        project = p
-    end
-  end
-  
-  # Find todo list
-  unless project.nil?
-    todo_lists = session.lists(project.id)
-    todo_list_id = nil 
-
-    todo_lists = todo_lists.each do |list|
-      task.tags.each do |tag|      
-        if list.name == tag.split(":").last
-          todo_list_id = list.id
-        end
-      end
-    end
-  end
-  
-  # Create task
-  if todo_list_id != nil
-      puts "Added '#{task.title}' to #{project.name}"
-      session.create_item(todo_list_id, task.title)
-  end  
-end
+ThingsToBasecamp.new(basecamp_url, basecamp_username, basecamp_password)
