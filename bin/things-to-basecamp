@@ -1,17 +1,78 @@
 #!/usr/bin/env ruby
 
 $: << File.expand_path(File.dirname(__FILE__)) + "/../lib"
+
 require "optparse"
-require "lib/basecamp"
-#require 'rubygems'
+require "basecamp"
 require 'things'
 
-BASECAMP_URL = "understandinggames.grouphub.com"
-USERNAME = "andreaszecher"
-PASSWORD = "diupdad8"
-SSL = true
-
 options = { :tasks => { :completed => false }, :tag => "Basecamp:Promoter:Backlog" }
+
+opts = OptionParser.new do |opts|
+  opts.separator ''
+  opts.separator 'Options:'
+  opts.banner = "Usage: things-to-basecamp [options]"
+  
+  def opts.show_usage
+    puts self
+    exit  
+  end
+  
+  opts.on("-u USERNAME", "--username USERNAME", "Username of your Basecamp account") do |username|    
+    options[:username] = username
+  end
+
+  opts.on("-p PASSWORD", "--password PASSWORD", "Password of your Basecamp account") do |password|
+    options[:password] = password
+  end
+
+  opts.on("-b BASECAMP_URL", "--basecamp-url BASECAMP_URL", "URL of your Basecamp account") do |url|
+    options[:url] = url
+  end
+  
+  opts.on_tail("-h", "--help", "Shows this help message") { opts.show_usage }
+  opts.on_tail("-v", "--version", "Shows version") do
+    puts "0.1"
+    exit
+  end
+end
+
+opts.parse!
+
+if options[:url].nil? and ENV['BASECAMP_URL'].nil?
+  puts "You did not specify your Basecamp url."
+  exit
+end
+  
+if options[:username].nil? and ENV['BASECAMP_USERNAME'].nil?
+  puts "You did not specify your Basecamp username."
+  exit
+end
+
+if options[:password].nil? and ENV['BASECAMP_PASSWORD'].nil?
+  puts "You did not specify your Basecamp password."
+  exit
+end
+
+if options[:url].nil?
+  basecamp_url = ENV['BASECAMP_URL']
+else
+  basecamp_url = options[:url]
+end
+
+if options[:username].nil?
+  basecamp_username = ENV['BASECAMP_USERNAME']
+else
+  basecamp_username = options[:username]
+end
+
+if options[:password].nil?
+  basecamp_password = ENV['BASECAMP_PASSWORD']
+else
+  basecamp_password = options[:password]
+end
+
+session = Basecamp.new(basecamp_url, basecamp_username, basecamp_password)
 
 things = Things.new()
 tasks = things.focus("today").tasks(options[:tasks])
@@ -19,38 +80,40 @@ tasks += things.focus("next").tasks(options[:tasks])
 tasks += things.focus("inbox").tasks(options[:tasks])
 
 tasks = tasks.select do |task|
-  task.tag? options[:tag]
-end
-
-tasks.map do |task|
-  tags    = "(#{task.tags.join(' ')})" if task.tags?
-  project = "[#{task.parent}]" if task.parent?
-  [task.bullet, task.title, tags, project].compact.join(" ")
-end
-
-session = Basecamp.new(BASECAMP_URL, USERNAME, PASSWORD)
-
-project_id = nil
-
-projects = session.projects.each do |project|
-  if project.name == options[:tag].split(":")[1]
-    project_id = project.id
+  tagged = false
+  task.tags.each do |tag|
+    tagged = true if tag.split(":").first == "List"
   end
+  tagged
 end
 
-if project_id != nil
-  todo_lists = session.lists(project_id)
-  todo_list_id = nil 
+tasks.each do |task|
+  # Find project
+  project = nil
 
-  todo_lists = todo_lists.each do |list|
-    if list.name == options[:tag].split(":").last
-      todo_list_id = list.id
+  projects = session.projects.each do |p|
+    if task.parent.title == p.name
+        project = p
     end
   end
+  
+  # Find todo list
+  unless project.nil?
+    todo_lists = session.lists(project.id)
+    todo_list_id = nil 
 
+    todo_lists = todo_lists.each do |list|
+      task.tags.each do |tag|      
+        if list.name == tag.split(":").last
+          todo_list_id = list.id
+        end
+      end
+    end
+  end
+  
+  # Create task
   if todo_list_id != nil
-    tasks.each do |task|
+      puts "Added '#{task.title}' to #{project.name}"
       session.create_item(todo_list_id, task.title)
-    end
-  end
+  end  
 end

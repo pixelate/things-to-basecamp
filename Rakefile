@@ -5,8 +5,8 @@ begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
     gem.name = "things-to-basecamp"
-    gem.summary = %Q{TODO: one-line summary of your gem}
-    gem.description = %Q{TODO: longer description of your gem}
+    gem.summary = "Export todos from Things.app to Basecamp"
+    gem.description = "Export all todos from Things.app in your Inbox, Today or Next focus that are tagged with 'Basecamp:PROJECT_NAME:LIST_NAME' to Basecamp."
     gem.email = "updates@pixelate.de"
     gem.homepage = "http://github.com/pixelate/things-to-basecamp"
     gem.authors = ["Andreas Zecher"]
